@@ -74,7 +74,7 @@ do
 
 
    # Make a script for replacing the PHASE flags and run it
-   echo "0/' > trial.tim " > edtim2 ; paste edtim1 edtim2 -d " " > edtim ; sh edtim
+   echo "0/' > trial.tim " > edtim2 ; paste -d " " edtim1 edtim2 > edtim ; sh edtim
    # Run tempo on this file
    tempo trial.tim -f $ephem -w 
 	
@@ -94,7 +94,14 @@ do
    echo "Did iteration $m out of $n."
    echo $acc_combination
    
-   /homes/pfreire/bin/plotres
+   echo $newchi >> summary_tests.txt 
+   echo $acc_combination >> summary_tests.txt
+   echo ' +++++ '  >> summary_tests.txt
+   cat $fitephem | grep ' 1 ' >> summary_tests.txt
+   cat $fitephem | grep TRES >> summary_tests.txt
+   echo ' ----------------------------' >> summary_tests.txt
+   echo " " >> summary_tests.txt
+   pyplotres.py
 	 
 	 
    m=`expr $m + 1`
