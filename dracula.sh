@@ -9,7 +9,7 @@ chi2_threshold="2.0"
 #       a) path to $TEMPO directory, which contains tempo.cfg, obsys.dat, etc.
 TEMPO=`echo $TEMPO`
 #       b) path to tempo executable
-alias tempo=
+alias tempo=$SOFTWARE/bin/tempo
 
 # ***** Specify where we are--this is the directory where we want to write our results.
 #       Default the directory where script is. This directory must contain the ephemeris, TOA list and acc_WRAPs.dat
@@ -23,17 +23,20 @@ rundir=/tmp/tempo
 #       Examples given of TOA file and initial ephemeris are given in this repository
 ephem=
 timfile=
-
-# ***** Name the resulting ephemeris (the top of the previous ephem file, plus .par)
 rephem=
 
 # ***** Finally: Edit your mail address here (please change this, otherwise I'll be getting e-mails with your solutions)
-address=
+address=emilieparent010@gmail.com
 
 # ***** WARNING: To start, you must have a file called acc_WRAPs.dat. If you don't, that means you're starting from scratch.
 #                In that case, just make one containing 3 zeros in a line.
 
 ##########################  YOU SHOULD NOT NEED TO EDIT BEYOND THIS LINE  ########################## 
+
+FILE0=acc_WRAPs.dat
+if [ ! -f "$FILE0" ]; then
+    echo "0 0 0" >> $FILE0
+fi
 
 # Make sorted file with list of gaps
 grep GAP $timfile | awk '{print $2}' | sort > gaps.txt
@@ -149,14 +152,14 @@ do
 	    # For each element in the loop, replace the comented PHASEA statement by an uncommented statement saying PHASE $phase_number
 	    # echo Replacing C $ex_to_replace with PHASE $phase_number
 	    
-	    sed -i 's/C '$ex_to_replace'/PHASE '$phase_number'/g' trial.tim
+	    sed -i .bak 's/C '$ex_to_replace'/PHASE '$phase_number'/g' trial.tim
 	    
 	    # Now, for two lines before and two lines after, we need to comment the JUMP statements
 	    line_jump=`expr $line + 2`
-	    sed -i $line_jump's/.*/C JUMP/' trial.tim
+	    sed -i .bak $line_jump's/.*/C JUMP/' trial.tim
 	    
 	    line_jump=`expr $line - 2`
-	    sed -i $line_jump's/.*/C JUMP/' trial.tim
+	    sed -i .bak $line_jump's/.*/C JUMP/' trial.tim
 	    
 	    # Update the counter #
 	    i=`expr $i + 1`	  
@@ -172,10 +175,10 @@ do
 	
 	# Now, uncomment the JUMPs around this
 	line_jump=`expr $line + 2`
-	sed -i $line_jump's/.*/C JUMP/' trial.tim
+	sed -i .bak $line_jump's/.*/C JUMP/' trial.tim
 	
 	line_jump=`expr $line - 2`
-	sed -i $line_jump's/.*/C JUMP/' trial.tim
+	sed -i .bak $line_jump's/.*/C JUMP/' trial.tim
 	
 	# The trial.tim file is ready. This will be the one we will be repeatedly editing over the next few lines.
 	# This will be done into a new file (trial_new.tim), otherwise confusion will reign.
