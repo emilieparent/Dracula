@@ -7,28 +7,28 @@ chi2_threshold="2.0"
 
 # ***** specify version of TEMPO we're using
 #       a) path to $TEMPO directory, which contains tempo.cfg, obsys.dat, etc.
-TEMPO=/homes/pfreire/tempo_M2/tempo
+TEMPO=`echo $TEMPO`
 #       b) path to tempo executable
-alias tempo=$TEMPO/tempo_m2
+alias tempo=
 
 # ***** Specify where we are--this is the directory where we want to write our results.
 #       Default the directory where script is. This directory must contain the ephemeris, TOA list and acc_WRAPs.dat
 basedir=$PWD
 
 # ***** Specify where we want to run this (Shared memory  - /dev/shm/something - saves your disk and tons of time)
-rundir=/dev/shm/AA
+rundir=/tmp/tempo
 
 # ***** Specify the files we are going to work with
 #       (.par and .tim file names--these files should be in your basedir) - DON'T name it "trial.tim"
 #       Examples given of TOA file and initial ephemeris are given in this repository
-ephem=47TucAA.par
-timfile=47TucAA.tim
+ephem=
+timfile=
 
 # ***** Name the resulting ephemeris (the top of the previous ephem file, plus .par)
-rephem=J0024-7205AA.par
+rephem=
 
 # ***** Finally: Edit your mail address here (please change this, otherwise I'll be getting e-mails with your solutions)
-address=pfreire@mpifr-bonn.mpg.de
+address=
 
 # ***** WARNING: To start, you must have a file called acc_WRAPs.dat. If you don't, that means you're starting from scratch.
 #                In that case, just make one containing 3 zeros in a line.
