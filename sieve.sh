@@ -118,7 +118,7 @@ do
    # Do the script for PHASE 0
 
          # Make a script for replacing the PHASE flags and run it
-         echo "0/' > trial.tim " > edtim2 ; paste edtim1 edtim2 -d " " > edtim ; sh edtim
+         echo "0/' > trial.tim " > edtim2 ; paste -d " " edtim1 edtim2 > edtim ; sh edtim
          # Run tempo on this file
          tempo trial.tim -f $ephem -w 
          chi2_0=`cat tempo.lis | tail -1 | awk -F= '{print $2}' | awk '{print $1}'`
@@ -127,7 +127,7 @@ do
    # Do the script for PHASE z1
 
          # Make a script for replacing the PHASE flags and run it
-         echo $z1"/' > trial.tim " > edtim2 ; paste edtim1 edtim2 -d " " > edtim ; sh edtim
+         echo $z1"/' > trial.tim " > edtim2 ; paste -d " " edtim1 edtim2 > edtim ; sh edtim
          # Run tempo on this file
          tempo trial.tim -f $ephem -w 
          chi2_1=`cat tempo.lis | tail -1 | awk -F= '{print $2}' | awk '{print $1}'`
@@ -136,7 +136,7 @@ do
    # Do the script for PHASE z2
 
          # Make a script for replacing the PHASE flags and run it
-         echo $z2"/' > trial.tim " > edtim2 ; paste edtim1 edtim2 -d " " > edtim ; sh edtim
+         echo $z2"/' > trial.tim " > edtim2 ; paste -d " " edtim1 edtim2 > edtim ; sh edtim
          # Run tempo on this file
          tempo trial.tim -f $ephem -w 
          chi2_2=`cat tempo.lis | tail -1 | awk -F= '{print $2}' | awk '{print $1}'`
@@ -148,7 +148,7 @@ do
    # Do the script for the best (minimum) phase
 
          # Make a script for replacing the PHASE flags and run it
-         echo $min"/' > trial.tim " > edtim2 ; paste edtim1 edtim2 -d " " > edtim ; sh edtim
+         echo $min"/' > trial.tim " > edtim2 ; paste -d " " edtim1 edtim2 > edtim ; sh edtim
          # Run tempo on this file
          tempo trial.tim -f $ephem -w 
          chi2=`cat tempo.lis | tail -1 | awk -F= '{print $2}' | awk '{print $1}'`
@@ -175,7 +175,7 @@ do
    do	 
    
          # Make a script for replacing the PHASE flags and run it
-         echo $z"/' > trial.tim " > edtim2 ; paste edtim1 edtim2 -d " " > edtim ; sh edtim
+         echo $z"/' > trial.tim " > edtim2 ; paste -d " " edtim1 edtim2 > edtim ; sh edtim
          # Run tempo on this file
          tempo trial.tim -f $ephem -w 
          chi2=`cat tempo.lis | tail -1 | awk -F= '{print $2}' | awk '{print $1}'`
@@ -202,7 +202,7 @@ do
    do	 
    
          # Make a script for replacing the PHASE flags and run it
-         echo $z"/' > trial.tim " > edtim2 ; paste edtim1 edtim2 -d " " > edtim ; sh edtim
+         echo $z"/' > trial.tim " > edtim2 ; paste -d " " edtim1 edtim2 > edtim ; sh edtim
          # Run tempo on this file
          tempo trial.tim -f $ephem -w 
          chi2=`cat tempo.lis | tail -1 | awk -F= '{print $2}' | awk '{print $1}'`
