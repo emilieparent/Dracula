@@ -25,8 +25,6 @@ ephem=
 timfile=
 rephem=
 
-# ***** Finally: Edit your mail address here (please change this, otherwise I'll be getting e-mails with your solutions)
-address=emilieparent010@gmail.com
 
 # ***** WARNING: To start, you must have a file called acc_WRAPs.dat. If you don't, that means you're starting from scratch.
 #                In that case, just make one containing 3 zeros in a line.
@@ -38,6 +36,12 @@ if [ ! -f "$FILE0" ]; then
     echo "0 0 0" >> $FILE0
 fi
 
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    sedflag=' -i .bak'
+else
+    sedflag=' -i '
+fi
+    
 # Make sorted file with list of gaps
 grep GAP $timfile | awk '{print $2}' | sort > gaps.txt
 
@@ -55,6 +59,12 @@ mkdir $rundir
 cp gaps.txt $ephem $timfile $rundir
 cp acc_WRAPs.dat $rundir
 
+
+if ls -U solution_*.??? 1> /dev/null 2>&1; then
+    echo "Moving solution files from previous run to " $rundir/prev_sols
+    mkdir $rundir/prev_sols
+    mv solution_*.??? $rundir/prev_sols
+fi
 # go to rundir and start calculation
 cd $rundir
 start=`date`
@@ -77,23 +87,23 @@ do
     # This will reduce the number of sorts by a factor k. However, it could slightly delay finding the solution.
     if [ "$n" -gt 100000 ]
     then
-	k=1000
-	k2=1001
+        k=1000
+        k2=1001
     else
-	if [ "$n" -gt 10000 ]
-	then
-	    k=100
-	    k2=101
-	else
-	    if [ "$n" -gt 1000 ]
-	    then
-		k=10
-		k2=11
-	    else
-		k=1
-		k2=2
-	    fi	
-	fi
+        if [ "$n" -gt 10000 ]
+        then
+            k=100
+            k2=101
+        else
+            if [ "$n" -gt 1000 ]
+            then
+                k=10
+                k2=11
+            else
+                k=1
+                k2=2
+            fi  
+        fi
     fi
 
     kc=0
@@ -109,208 +119,205 @@ do
     
     while [ "$kc" -lt "$k" ]
     do
-	kc=`expr $kc + 1`
-	l=`expr $l + 1`
+    kc=`expr $kc + 1`
+    l=`expr $l + 1`
 
-	# ***** First step: read the first line, the one with the lowest chi2
-	head -$kc top_acc_WRAPs.dat | tail -1 > line_complete.txt
-	
-	# Take out two last values to make list with phase numbers only
-	awk '{$NF=""; print $0}' line_complete.txt | awk '{$NF=""; print $0}' > line.txt
-	
-	# Store this in an env. variable
-	acc_combination=`cat line.txt`
-		
-	# *****  Third step: see how long it is.
-	length=`wc line.txt | awk '{print $2}'`
-	# add 1, because we start counter below at 1*/
-	length=`expr $length + 1`
-	
-	# get the previous chi2 here
-	chi2_prev=`awk '{print $'$length'}' line_complete.txt`
+    # ***** First step: read the first line, the one with the lowest chi2
+    head -$kc top_acc_WRAPs.dat | tail -1 > line_complete.txt
+    
+    # Take out two last values to make list with phase numbers only
+    awk '{$NF=""; print $0}' line_complete.txt | awk '{$NF=""; print $0}' > line.txt
+    
+    # Store this in an env. variable
+    acc_combination=`cat line.txt`
+        
+    # *****  Third step: see how long it is.
+    length=`wc line.txt | awk '{print $2}'`
+    # add 1, because we start counter below at 1*/
+    length=`expr $length + 1`
+    
+    # get the previous chi2 here
+    chi2_prev=`awk '{print $'$length'}' line_complete.txt`
 
-	echo Iteration $l, $kc: processing solution $acc_combination, with chi2 = $chi2_prev
-	
-	# *****  Fourth step: a loop, dictated by the number above, where we replace PHASEA with PHASE +l, and replace the JUMP statements above and below by nothing
-	
-	# We must start with a clean slate: a trial.tim file that still has all the JUMPs uncommented, and all the PHASEA statements commented
-	cp $timfile trial.tim
-	
-	# Start the loop
-	i=1
-	while [ "$i" -lt "$length" ]
-	do
-	    # First, find out which expression is to be replaced 
-	    ex_to_replace=`head -$i gaps.txt | tail -1`
-	    
-	    # Second, find out where it appears in trial.tim file
-	    line=`sed -n '/'$ex_to_replace'/=' trial.tim`
-	    
-	    # Third: get, from line.txt, the phase number to insert
-	    phase_number=`awk '{print $'$i'}' line.txt`
-	    
-	    # For each element in the loop, replace the comented PHASEA statement by an uncommented statement saying PHASE $phase_number
-	    # echo Replacing C $ex_to_replace with PHASE $phase_number
-	    
-	    sed -i .bak 's/C '$ex_to_replace'/PHASE '$phase_number'/g' trial.tim
-	    
-	    # Now, for two lines before and two lines after, we need to comment the JUMP statements
-	    line_jump=`expr $line + 2`
-	    sed -i .bak $line_jump's/.*/C JUMP/' trial.tim
-	    
-	    line_jump=`expr $line - 2`
-	    sed -i .bak $line_jump's/.*/C JUMP/' trial.tim
-	    
-	    # Update the counter #
-	    i=`expr $i + 1`	  
-	done
-		    
-	# Now, let's find more gaps for the next phase number. The syntax here is the same as above.
-	
-	# First, find out which expression is to be replaced 
-	ex_to_replace=`head -$i gaps.txt | tail -1`
-	
-	# Second, find out where it appears in trial.tim file
-	line=`sed -n '/'$ex_to_replace'/=' trial.tim`
-	
-	# Now, uncomment the JUMPs around this
-	line_jump=`expr $line + 2`
-	sed -i .bak $line_jump's/.*/C JUMP/' trial.tim
-	
-	line_jump=`expr $line - 2`
-	sed -i .bak $line_jump's/.*/C JUMP/' trial.tim
-	
-	# The trial.tim file is ready. This will be the one we will be repeatedly editing over the next few lines.
-	# This will be done into a new file (trial_new.tim), otherwise confusion will reign.
-	
-	# First, we will test the new gap in 3 points (0, +z, -z). From these three chi2s, we will derive the positions for the best solutions
-	
-	# ***** Now, calculate the chi2 for PHASE +0
-	sed 's/C '$ex_to_replace'/PHASE 0/g' trial.tim > trial_new.tim
-	tempo trial_new.tim -f $ephem -w > /dev/null
-	t=`expr $t + 1`
-	chi2_0=`cat tempo.lis | tail -1 | awk -F= '{print $2}' | awk '{print $1}'`
-	
-	# Do the same for PHASE $z1
-	sed 's/C '$ex_to_replace'/PHASE '$z1'/g' trial.tim > trial_new.tim	
-	tempo trial_new.tim -f $ephem -w > /dev/null 
-	t=`expr $t + 1`
-	chi2_1=`cat tempo.lis | tail -1 | awk -F= '{print $2}' | awk '{print $1}'`
-	
-	# Do the same for PHASE $z2
-	sed 's/C '$ex_to_replace'/PHASE '$z2'/g' trial.tim > trial_new.tim	
-	tempo trial_new.tim -f $ephem -w > /dev/null
-	t=`expr $t + 1`
-	chi2_2=`cat tempo.lis | tail -1 | awk -F= '{print $2}' | awk '{print $1}'`
-	
-	# determine position of minimum (this should be reasonably accurate) by estimating minimum of parabola defined by 0, z1, z2
-	
-	min=`echo 'scale=0 ; ( '$z2'^2 *('$chi2_0' - '$chi2_1') + '$z1'^2*(-'$chi2_0' + '$chi2_2')) / (2.*('$z2'*('$chi2_0' - '$chi2_1') + '$z1'*(-'$chi2_0' + '$chi2_2'))) / 1.0 ' | bc -l`
-	
-	# Now, let's calculate the chi2 for the best (minimum) phase
-	
-	sed 's/C '$ex_to_replace'/PHASE '$min'/g' trial.tim > trial_new.tim
+    echo Iteration $l, $kc: processing solution $acc_combination, with chi2 = $chi2_prev
+    
+    # *****  Fourth step: a loop, dictated by the number above, where we replace PHASEA with PHASE +l, and replace the JUMP statements above and below by nothing
+    
+    # We must start with a clean slate: a trial.tim file that still has all the JUMPs uncommented, and all the PHASEA statements commented
+    cp $timfile trial.tim
+    
+    # Start the loop
+    i=1
+    while [ "$i" -lt "$length" ]
+    do
+        # First, find out which expression is to be replaced 
+        ex_to_replace=`head -$i gaps.txt | tail -1`
+        
+        # Second, find out where it appears in trial.tim file
+        line=`sed -n '/'$ex_to_replace'/=' trial.tim`
+        
+        # Third: get, from line.txt, the phase number to insert
+        phase_number=`awk '{print $'$i'}' line.txt`
+        
+        # For each element in the loop, replace the comented PHASEA statement by an uncommented statement saying PHASE $phase_number
+        # echo Replacing C $ex_to_replace with PHASE $phase_number
+        
+        sed $sedflag 's/C '$ex_to_replace'/PHASE '$phase_number'/g' trial.tim
+        
+        # Now, for two lines before and two lines after, we need to comment the JUMP statements
+        line_jump=`expr $line + 2`
+        sed $sedflag $line_jump's/.*/C JUMP/' trial.tim
+        
+        line_jump=`expr $line - 2`
+        sed $sedflag $line_jump's/.*/C JUMP/' trial.tim
+        
+        # Update the counter #
+        i=`expr $i + 1`   
+    done
+            
+    # Now, let's find more gaps for the next phase number. The syntax here is the same as above.
+    
+    # First, find out which expression is to be replaced 
+    ex_to_replace=`head -$i gaps.txt | tail -1`
+    
+    # Second, find out where it appears in trial.tim file
+    line=`sed -n '/'$ex_to_replace'/=' trial.tim`
+    
+    # Now, uncomment the JUMPs around this
+    line_jump=`expr $line + 2`
+    sed $sedflag $line_jump's/.*/C JUMP/' trial.tim
+    
+    line_jump=`expr $line - 2`
+    sed $sedflag $line_jump's/.*/C JUMP/' trial.tim
+    
+    # The trial.tim file is ready. This will be the one we will be repeatedly editing over the next few lines.
+    # This will be done into a new file (trial_new.tim), otherwise confusion will reign.
+    
+    # First, we will test the new gap in 3 points (0, +z, -z). From these three chi2s, we will derive the positions for the best solutions
+    
+    # ***** Now, calculate the chi2 for PHASE +0
+    sed 's/C '$ex_to_replace'/PHASE 0/g' trial.tim > trial_new.tim
+    tempo trial_new.tim -f $ephem -w > /dev/null
+    t=`expr $t + 1`
+    chi2_0=`cat tempo.lis | tail -1 | awk -F= '{print $2}' | awk '{print $1}'`
+    
+    # Do the same for PHASE $z1
+    sed 's/C '$ex_to_replace'/PHASE '$z1'/g' trial.tim > trial_new.tim  
+    tempo trial_new.tim -f $ephem -w > /dev/null 
+    t=`expr $t + 1`
+    chi2_1=`cat tempo.lis | tail -1 | awk -F= '{print $2}' | awk '{print $1}'`
+    
+    # Do the same for PHASE $z2
+    sed 's/C '$ex_to_replace'/PHASE '$z2'/g' trial.tim > trial_new.tim  
+    tempo trial_new.tim -f $ephem -w > /dev/null
+    t=`expr $t + 1`
+    chi2_2=`cat tempo.lis | tail -1 | awk -F= '{print $2}' | awk '{print $1}'`
+    
+    # determine position of minimum (this should be reasonably accurate) by estimating minimum of parabola defined by 0, z1, z2
+    
+    min=`echo 'scale=0 ; ( '$z2'^2 *('$chi2_0' - '$chi2_1') + '$z1'^2*(-'$chi2_0' + '$chi2_2')) / (2.*('$z2'*('$chi2_0' - '$chi2_1') + '$z1'*(-'$chi2_0' + '$chi2_2'))) / 1.0 ' | bc -l`
+    
+    # Now, let's calculate the chi2 for the best (minimum) phase
+    
+    sed 's/C '$ex_to_replace'/PHASE '$min'/g' trial.tim > trial_new.tim
         tempo trial_new.tim -f $ephem -w > /dev/null 
-	t=`expr $t + 1`
+    t=`expr $t + 1`
         chi2=`cat tempo.lis | tail -1 | awk -F= '{print $2}' | awk '{print $1}'`
-	
-	# Comparison between two real numbers
-	chi=`echo $chi2' < '$chi2_threshold | bc -l`
-	
-	# If chi2 is smaller than threshold, write to WRAPs.dat
-	if [ "$chi" -eq "1" ]
-	then
-	    # If the number of gaps connected by new solution is the same as the number of gaps, then notify user of the solution
-	    if [ "$i" -eq "$n_gaps" ]
-	    then
-		echo Full solution found! $acc_combination, $min : chi2 = $chi2
-		echo $acc_combination $min $chi2 $chi2_prev > $basedir/solution_$l.$min.dat
-		cp $rephem $basedir/solution_$l.$min.par
-		# Let user know a solution has been found
-		cat $rephem | mail -s "Solution found" $address
-		s=`expr $s + 1`
-	    else
-		# If number of connections is smaller, then just write solution to WRAPs.dat
-		echo Found $acc_combination, $min : chi2 = $chi2
-		echo $acc_combination $min $chi2 $chi2_prev >> WRAPs.dat
-	    fi
+    
+    # Comparison between two real numbers
+    chi=`echo $chi2' < '$chi2_threshold | bc -l`
+    
+    # If chi2 is smaller than threshold, write to WRAPs.dat
+    if [ "$chi" -eq "1" ]
+    then
+        # If the number of gaps connected by new solution is the same as the number of gaps, then notify user of the solution
+        if [ "$i" -eq "$n_gaps" ]
+        then
+            echo Full solution found! $acc_combination, $min : chi2 = $chi2
+            echo $acc_combination $min $chi2 $chi2_prev > $basedir/solution_$l.$min.dat
+            cp $rephem $basedir/solution_$l.$min.par
+            # Let user know a solution has been found
+            s=`expr $s + 1`
         else
-	    echo "chi2 too large"
+            # If number of connections is smaller, then just write solution to WRAPs.dat
+            echo Found $acc_combination, $min : chi2 = $chi2
+            echo $acc_combination $min $chi2 $chi2_prev >> WRAPs.dat
         fi
-	
-	# **************** Do cycle going up in phase count
-	
-	z=`expr $min + 1`
-	chi=1
-	while [ "$chi" -eq 1 ]
-	do 
-	    sed 's/C '$ex_to_replace'/PHASE '$z'/g' trial.tim > trial_new.tim	    
-	    tempo trial_new.tim -f $ephem -w > /dev/null
-	    t=`expr $t + 1`
-	    chi2=`cat tempo.lis | tail -1 | awk -F= '{print $2}' | awk '{print $1}'`
-	    
-	    # comparison between two real numbers
-	    chi=`echo $chi2' < '$chi2_threshold | bc -l` 
-	    
-	    # If chi2 is smaller than threshold, write to WRAPs.dat
-	    if [ "$chi" -eq "1" ]
-	    then
-		# If the number of gaps connected by new solution is the same as the number of gaps, then notify user of the solution
-		if [ "$i" -eq "$n_gaps" ]
-		then
-		    echo Full solution found! $acc_combination, $z : chi2 = $chi2
-		    echo $acc_combination $z $chi2 $chi2_prev > $basedir/solution_$l.$z.dat
-		    cp $rephem $basedir/solution_$l.$z.par
-		    # Let user know a solution has been found
-		    cat $rephem | mail -s "Solution found" $address
-		    s=`expr $s + 1`
-		else
-		    # If number of connections is smaller, then just write solution to WRAPs.dat
-		    echo Found $acc_combination, $z : chi2 = $chi2
-		    echo $acc_combination $z $chi2 $chi2_prev >> WRAPs.dat
-		fi			
-	    else
-		echo "chi2 too large"
-	    fi   
-	    z=`expr $z + 1`
-	done
-	
-	# **************** Do cycle going down in phase count
-	
-	z=`expr $min - 1`
-	chi=1   
-	while [ "$chi" -eq 1 ]
-	do	 
-	    sed 's/C '$ex_to_replace'/PHASE '$z'/g' trial.tim > trial_new.tim	    
-	    tempo trial_new.tim -f $ephem -w > /dev/null
-	    t=`expr $t + 1`
-	    chi2=`cat tempo.lis | tail -1 | awk -F= '{print $2}' | awk '{print $1}'`
-	    
-	    # Comparison between two real numbers
-	    chi=`echo $chi2' < '$chi2_threshold | bc -l`
-	    
-	    # If chi2 is smaller than threshold, write to WRAPs.dat
-	    if [ "$chi" -eq "1" ]
-	    then
-		# If the number of gaps connected by new solution is the same as the number of gaps, then notify user of the solution
-		if [ "$i" -eq "$n_gaps" ]
-		then
-		    echo Full solution found! $acc_combination, $z : chi2 = $chi2
-		    echo $acc_combination $z $chi2 $chi2_prev > $basedir/solution_$l.$z.dat
-		    cp $rephem $basedir/solution_$l.$z.par
-		    # Let user know a solution has been found
-		    cat $rephem | mail -s "Solution found" $address
-		    s=`expr $s + 1`
-		else
-		    # If number of connections is smaller, then just write solution to WRAPs.dat
-		    echo Found $acc_combination, $z : chi2 = $chi2
-		    echo $acc_combination $z $chi2 $chi2_prev >> WRAPs.dat
-		fi			
-	    else
-		echo "chi2 too large"
-	    fi
-	    z=`expr $z - 1`
-	done	
+    else
+        echo "  chi2 too large ("$chi2")"
+    fi
+    
+    # **************** Do cycle going up in phase count
+    
+    z=`expr $min + 1`
+    chi=1
+    while [ "$chi" -eq 1 ]
+    do 
+        sed 's/C '$ex_to_replace'/PHASE '$z'/g' trial.tim > trial_new.tim       
+        tempo trial_new.tim -f $ephem -w > /dev/null
+        t=`expr $t + 1`
+        chi2=`cat tempo.lis | tail -1 | awk -F= '{print $2}' | awk '{print $1}'`
+        
+        # comparison between two real numbers
+        chi=`echo $chi2' < '$chi2_threshold | bc -l` 
+        
+        # If chi2 is smaller than threshold, write to WRAPs.dat
+        if [ "$chi" -eq "1" ]
+        then
+        # If the number of gaps connected by new solution is the same as the number of gaps, then notify user of the solution
+        if [ "$i" -eq "$n_gaps" ]
+        then
+            echo Full solution found! $acc_combination, $z : chi2 = $chi2
+            echo $acc_combination $z $chi2 $chi2_prev > $basedir/solution_$l.$z.dat
+            cp $rephem $basedir/solution_$l.$z.par
+            # Let user know a solution has been found
+            s=`expr $s + 1`
+        else
+            # If number of connections is smaller, then just write solution to WRAPs.dat
+            echo Found $acc_combination, $z : chi2 = $chi2
+            echo $acc_combination $z $chi2 $chi2_prev >> WRAPs.dat
+        fi          
+        else
+        echo "  chi2 too large ("$chi2")"
+        fi   
+        z=`expr $z + 1`
+    done
+    
+    # **************** Do cycle going down in phase count
+    
+    z=`expr $min - 1`
+    chi=1   
+    while [ "$chi" -eq 1 ]
+    do   
+        sed 's/C '$ex_to_replace'/PHASE '$z'/g' trial.tim > trial_new.tim       
+        tempo trial_new.tim -f $ephem -w > /dev/null
+        t=`expr $t + 1`
+        chi2=`cat tempo.lis | tail -1 | awk -F= '{print $2}' | awk '{print $1}'`
+        
+        # Comparison between two real numbers
+        chi=`echo $chi2' < '$chi2_threshold | bc -l`
+        
+        # If chi2 is smaller than threshold, write to WRAPs.dat
+        if [ "$chi" -eq "1" ]
+        then
+            # If the number of gaps connected by new solution is the same as the number of gaps, then notify user of the solution
+            if [ "$i" -eq "$n_gaps" ]
+            then
+                echo Full solution found! $acc_combination, $z : chi2 = $chi2
+                echo $acc_combination $z $chi2 $chi2_prev > $basedir/solution_$l.$z.dat
+                cp $rephem $basedir/solution_$l.$z.par
+                # Let user know a solution has been found
+                s=`expr $s + 1`
+            else
+                # If number of connections is smaller, then just write solution to WRAPs.dat
+                echo Found $acc_combination, $z : chi2 = $chi2
+                echo $acc_combination $z $chi2 $chi2_prev >> WRAPs.dat
+            fi          
+        else
+            echo "  chi2 too large ("$chi2")"
+        fi
+        z=`expr $z - 1`
+    done    
     done
     
     # re-make acc_WRAPs.dat for next k cycle.
@@ -326,7 +333,7 @@ do
     # Let's now save one's work, in case there are problems with the computer
     if [ "$k" -gt "10" ]
     then
-	cp acc_WRAPs.dat $basedir
+        cp acc_WRAPs.dat $basedir
     fi
 
     # Update n with number of remaining solutions
